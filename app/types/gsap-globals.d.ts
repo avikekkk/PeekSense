@@ -30,5 +30,6 @@ interface ScrollSmootherGlobal {
 export interface ScrollSmootherInstance {
   effects: (target: Element, config: { speed: number; lag: number }) => void;
   getVelocity: () => number;
+  paused: (value?: boolean) => boolean;
   kill?: () => void;
 }

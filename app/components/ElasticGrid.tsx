@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 import type { GalleryConfig } from '../lib/gallery-data';
 import type { ScrollSmootherInstance } from '../types/gsap-globals';
 
@@ -20,24 +21,6 @@ const waitForVendorScripts = async () => {
   }
 
   throw new Error('GSAP vendor scripts did not load.');
-};
-
-const preloadBackgroundImages = (elements: HTMLElement[]) => {
-  const urls = elements
-    .map((element) => element.style.backgroundImage.match(/url\(["']?(.+?)["']?\)/)?.[1])
-    .filter((url): url is string => Boolean(url));
-
-  return Promise.all(
-    urls.map(
-      (url) =>
-        new Promise<void>((resolve) => {
-          const image = new Image();
-          image.onload = () => resolve();
-          image.onerror = () => resolve();
-          image.src = url;
-        }),
-    ),
-  );
 };
 
 const safeKillSmoother = (instance?: ScrollSmootherInstance) => {
@@ -64,8 +47,73 @@ const getColumnCount = (grid: HTMLElement) =>
 
 const getLag = (index: number) => 0.2 + (index + 1) * 0.3;
 
+const CLOSE_ANIMATION_MS = 220;
+
 export function ElasticGrid({ gallery }: ElasticGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const smootherRef = useRef<ScrollSmootherInstance | undefined>(undefined);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const itemCount = gallery.items.length;
+  const selected = selectedIndex === null ? null : gallery.items[selectedIndex];
+
+  const closeLightbox = () => {
+    if (isClosing) {
+      return;
+    }
+    setIsClosing(true);
+    window.setTimeout(() => {
+      setSelectedIndex(null);
+      setIsClosing(false);
+    }, CLOSE_ANIMATION_MS);
+  };
+
+  const showRelative = (delta: number) => {
+    setSelectedIndex((current) => {
+      if (current === null) {
+        return current;
+      }
+      return (current + delta + itemCount) % itemCount;
+    });
+  };
+
+  useEffect(() => {
+    if (selectedIndex === null) {
+      return;
+    }
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeLightbox();
+      } else if (event.key === 'ArrowRight') {
+        showRelative(1);
+      } else if (event.key === 'ArrowLeft') {
+        showRelative(-1);
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedIndex, isClosing, itemCount]);
+
+  useEffect(() => {
+    if (selectedIndex === null) {
+      return;
+    }
+
+    smootherRef.current?.paused(true);
+
+    const block = (event: Event) => event.preventDefault();
+    window.addEventListener('wheel', block, { passive: false });
+    window.addEventListener('touchmove', block, { passive: false });
+
+    return () => {
+      window.removeEventListener('wheel', block);
+      window.removeEventListener('touchmove', block);
+      smootherRef.current?.paused(false);
+    };
+  }, [selectedIndex]);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,12 +132,6 @@ export function ElasticGrid({ gallery }: ElasticGridProps) {
       }
 
       const grid = gridRef.current;
-      await preloadBackgroundImages(Array.from(grid.querySelectorAll<HTMLElement>('.grid__item-img')));
-
-      if (cancelled || !window.gsap || !window.ScrollSmoother) {
-        return;
-      }
-
       const existingSmoother = window.ScrollSmoother.get?.();
       safeKillSmoother(existingSmoother);
 
@@ -102,6 +144,7 @@ export function ElasticGrid({ gallery }: ElasticGridProps) {
         wrapper: '#smooth-wrapper',
         content: '#smooth-content',
       });
+      smootherRef.current = smoother;
 
       const originalItems = Array.from(grid.querySelectorAll<HTMLElement>('.grid__item'));
 
@@ -175,6 +218,7 @@ export function ElasticGrid({ gallery }: ElasticGridProps) {
       }
 
       safeKillSmoother(smoother);
+      smootherRef.current = undefined;
     };
   }, [gallery.bodyClass]);
 
@@ -187,12 +231,79 @@ export function ElasticGrid({ gallery }: ElasticGridProps) {
         <div className="grid" ref={gridRef}>
           {gallery.items.map((item, index) => (
             <figure className="grid__item" key={`${item.image}-${index}`}>
-              <div className="grid__item-img" style={{ backgroundImage: `url(${item.image})` }} />
+              <button
+                type="button"
+                className="grid__item-img"
+                onClick={() => setSelectedIndex(index)}
+                aria-label={`Open ${item.caption}`}
+              >
+                <Image
+                  src={item.image}
+                  alt={item.caption}
+                  fill
+                  sizes="(min-width: 65em) 20vw, (min-width: 40em) 33vw, 50vw"
+                  priority={index < 8}
+                />
+              </button>
               <figcaption className="grid__item-caption">{item.caption}</figcaption>
             </figure>
           ))}
         </div>
       </main>
+      {selected && (
+        <div
+          className={`lightbox${isClosing ? ' lightbox--closing' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={selected.caption}
+          onClick={closeLightbox}
+        >
+          <button
+            type="button"
+            className="lightbox__close"
+            onClick={closeLightbox}
+            aria-label="Close"
+          >
+            ×
+          </button>
+          <button
+            type="button"
+            className="lightbox__nav lightbox__nav--prev"
+            onClick={(event) => {
+              event.stopPropagation();
+              showRelative(-1);
+            }}
+            aria-label="Previous image"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="lightbox__nav lightbox__nav--next"
+            onClick={(event) => {
+              event.stopPropagation();
+              showRelative(1);
+            }}
+            aria-label="Next image"
+          >
+            ›
+          </button>
+          <div
+            key={selectedIndex}
+            className="lightbox__content"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Image
+              src={selected.image}
+              alt={selected.caption}
+              fill
+              sizes="100vw"
+              priority
+            />
+            <p className="lightbox__caption">{selected.caption}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

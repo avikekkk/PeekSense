@@ -1,3 +1,6 @@
+import { unstable_cache } from 'next/cache';
+import { UTApi } from 'uploadthing/server';
+
 export interface GridItem {
   image: string;
   caption: string;
@@ -8,40 +11,64 @@ export interface GalleryConfig {
   items: GridItem[];
 }
 
-const captions = [
-  'Zorith - L91',
-  'Mykar - L27',
-  'Thalon - V75',
-  'Vexra - N22',
-  'Drosin - X29',
-  'Ryndel - Y52',
-  'Korin - T18',
-  'Nymera - L50',
-  'Lektar - X43',
-  'Fexil - R50',
-  'Jaleth - N49',
-  'Torvik - Y15',
-  'Lumora - X82',
-  'Zekron - X99',
-  'Brynd - Q89',
-  'Solmir - Q91',
-  'Dareon - N38',
-  'Noxil - T76',
-  'Kairon - R28',
-  'Voric - T97',
-] as const;
+const MAX_DISPLAYED = 300;
+const PAGE_SIZE = 500;
+const CACHE_SECONDS = 60 * 60;
 
-const repeatItems = (count: number): GridItem[] =>
-  Array.from({ length: count }, (_, index) => {
-    const offset = index % captions.length;
+const getAppId = (token: string): string => {
+  const decoded = Buffer.from(token, 'base64').toString('utf-8');
+  const { appId } = JSON.parse(decoded) as { appId: string };
+  return appId;
+};
+
+const cleanCaption = (name: string): string =>
+  name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
+
+type UploadThingFile = Awaited<ReturnType<UTApi['listFiles']>>['files'][number];
+
+const listAllFiles = async (utapi: UTApi, cap: number): Promise<UploadThingFile[]> => {
+  const all: UploadThingFile[] = [];
+  let offset = 0;
+
+  while (all.length < cap) {
+    const { files, hasMore } = await utapi.listFiles({ limit: PAGE_SIZE, offset });
+    all.push(...files);
+    if (!hasMore || files.length === 0) {
+      break;
+    }
+    offset += files.length;
+  }
+
+  return all;
+};
+
+const fetchGallery = unstable_cache(
+  async (): Promise<GalleryConfig> => {
+    const token = process.env.UPLOADTHING_TOKEN;
+    if (!token) {
+      throw new Error('UPLOADTHING_TOKEN is not set. Add it to .env.local.');
+    }
+
+    const utapi = new UTApi({ token });
+    const appId = getAppId(token);
+    const files = await listAllFiles(utapi, MAX_DISPLAYED);
+
+    const items: GridItem[] = files
+      .filter((file) => file.status === 'Uploaded')
+      .map((file) => ({
+        image: `https://${appId}.ufs.sh/f/${file.key}`,
+        caption: cleanCaption(file.name),
+      }))
+      .sort((a, b) => a.caption.localeCompare(b.caption, undefined, { sensitivity: 'base' }))
+      .slice(0, MAX_DISPLAYED);
 
     return {
-      image: `/assets/${offset + 1}.webp`,
-      caption: captions[offset],
+      bodyClass: 'peeksense',
+      items,
     };
-  });
+  },
+  ['uploadthing-gallery'],
+  { revalidate: CACHE_SECONDS, tags: ['gallery'] },
+);
 
-export const gallery: GalleryConfig = {
-  bodyClass: 'peeksense',
-  items: repeatItems(80),
-};
+export const getGallery = fetchGallery;
