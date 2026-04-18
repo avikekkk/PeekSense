@@ -2,12 +2,12 @@ import { unstable_cache } from 'next/cache';
 import { UTApi } from 'uploadthing/server';
 
 export interface GridItem {
+  id: string;
   image: string;
   caption: string;
 }
 
 export interface GalleryConfig {
-  bodyClass: string;
   items: GridItem[];
 }
 
@@ -56,16 +56,16 @@ const fetchGallery = unstable_cache(
     const items: GridItem[] = files
       .filter((file) => file.status === 'Uploaded')
       .map((file) => ({
+        id: file.key,
         image: `https://${appId}.ufs.sh/f/${file.key}`,
         caption: cleanCaption(file.name),
       }))
-      .sort((a, b) => a.caption.localeCompare(b.caption, undefined, { sensitivity: 'base' }))
+      .sort((a, b) =>
+        a.caption.localeCompare(b.caption, undefined, { sensitivity: 'base', numeric: true }),
+      )
       .slice(0, MAX_DISPLAYED);
 
-    return {
-      bodyClass: 'peeksense',
-      items,
-    };
+    return { items };
   },
   ['uploadthing-gallery'],
   { revalidate: CACHE_SECONDS, tags: ['gallery'] },
