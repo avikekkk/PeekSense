@@ -1,6 +1,7 @@
 import { ElasticGrid } from './components/ElasticGrid';
-import { gallery } from './lib/gallery-data';
+import { getGallery } from './lib/gallery-data';
 
-export default function Home() {
+export default async function Home() {
+  const gallery = await getGallery();
   return <ElasticGrid gallery={gallery} />;
 }

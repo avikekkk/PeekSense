@@ -46,5 +46,7 @@ next-env.d.ts
 *.swp
 *.swo
 
-# lockfiles (per existing convention)
-package-lock.json
+# local tooling
+.agents
+.claude
+skills-lock.json
