@@ -3,7 +3,7 @@ export {};
 declare global {
   interface Window {
     gsap?: GsapGlobal;
-    ScrollTrigger?: unknown;
+    ScrollTrigger?: ScrollTriggerGlobal;
     ScrollSmoother?: ScrollSmootherGlobal;
   }
 }
@@ -16,6 +16,10 @@ interface GsapGlobal {
   };
 }
 
+interface ScrollTriggerGlobal {
+  refresh?: () => void;
+}
+
 interface ScrollSmootherGlobal {
   create: (config: {
     smooth: number;
@@ -23,6 +27,8 @@ interface ScrollSmootherGlobal {
     normalizeScroll: boolean;
     wrapper?: string | Element;
     content?: string | Element;
+    smoothTouch?: number | boolean;
+    ease?: string;
   }) => ScrollSmootherInstance;
   get?: () => ScrollSmootherInstance | undefined;
 }
