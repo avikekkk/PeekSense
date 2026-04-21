@@ -61,6 +61,22 @@ a {
   position: relative;
   pointer-events: none;
 
+  .frame__back {
+    display: inline-block;
+    font-family: var(--font-dm-sans), sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-link);
+    pointer-events: auto;
+    margin-bottom: 0.5rem;
+
+    &:hover {
+      color: var(--color-link-hover);
+      text-decoration: none;
+    }
+  }
+
   .frame__title {
     font-family: var(--font-gloock), serif;
     color: #000;
@@ -75,6 +91,140 @@ a {
       font-size: clamp(1.35rem, 8vw, 2.2rem);
     }
   }
+}
+
+.albums {
+  min-height: 100vh;
+  padding: 0 var(--page-padding) 6rem;
+}
+
+.albums__header {
+  padding: 1.75rem 0 2rem;
+}
+
+.albums__title {
+  font-family: var(--font-gloock), serif;
+  font-size: clamp(1.8rem, 4.5vw, 3.2rem);
+  font-weight: 600;
+  line-height: 0.95;
+  margin: 0;
+  color: #000;
+
+  @media screen and (max-width: 40em) {
+    font-size: clamp(1.35rem, 8vw, 2.2rem);
+  }
+}
+
+.albums__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+
+  @media screen and (min-width: 48em) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+.albums__card {
+  display: block;
+  background: #fafafa;
+  border: 1px solid #ececec;
+  border-radius: 14px;
+  padding: 1.75rem 1.75rem 1.4rem;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+
+  &:hover {
+    background: #fff;
+    border-color: #dcdcdc;
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px rgba(20, 20, 20, 0.08);
+    text-decoration: none;
+    color: var(--color-text);
+
+    .albums__stack-photo {
+      transform: translateY(-2px);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid red;
+    outline-offset: 3px;
+  }
+}
+
+.albums__stack {
+  display: flex;
+  padding-bottom: 1.35rem;
+  min-height: clamp(140px, 24vw, 200px);
+}
+
+.albums__stack-photo {
+  position: relative;
+  width: 31%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+  background: #fff;
+  box-shadow:
+    -8px 0 14px -4px rgba(0, 0, 0, 0.3),
+    0 10px 22px rgba(0, 0, 0, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.15);
+
+  &:first-child {
+    box-shadow:
+      0 10px 22px rgba(0, 0, 0, 0.22),
+      0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  &:not(:first-child) {
+    margin-left: -8%;
+  }
+
+  img {
+    object-fit: cover;
+  }
+}
+
+.albums__stack-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 2;
+  color: rgba(0, 0, 0, 0.35);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px dashed #d5d5d5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.albums__card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #ececec;
+}
+
+.albums__card-name {
+  font-family: var(--font-gloock), serif;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 500;
+  line-height: 1.15;
+  color: #000;
+}
+
+.albums__card-meta {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 0.78rem;
+  color: var(--color-link);
+  letter-spacing: 0.02em;
 }
 
 .grid {

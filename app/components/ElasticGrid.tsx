@@ -12,9 +12,10 @@ import type { GalleryConfig } from '../lib/gallery-data';
 
 interface ElasticGridProps {
   gallery: GalleryConfig;
+  albumName?: string;
 }
 
-export function ElasticGrid({ gallery }: ElasticGridProps) {
+export function ElasticGrid({ gallery, albumName }: ElasticGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isClosing, setIsClosing] = useState(false);
@@ -61,7 +62,7 @@ export function ElasticGrid({ gallery }: ElasticGridProps) {
 
   return (
     <>
-      <Gallery ref={gridRef} items={gallery.items} onOpen={setSelectedIndex} ready={ready} />
+      <Gallery ref={gridRef} items={gallery.items} onOpen={setSelectedIndex} ready={ready} albumName={albumName} />
       {selected && selectedIndex !== null && (
         <Lightbox
           item={selected}

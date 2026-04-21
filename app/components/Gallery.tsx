@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { forwardRef } from 'react';
 import type { GridItem } from '../lib/gallery-data';
 
@@ -8,17 +9,23 @@ interface GalleryProps {
   items: GridItem[];
   onOpen: (index: number) => void;
   ready: boolean;
+  albumName?: string;
 }
 
 export const Gallery = forwardRef<HTMLDivElement, GalleryProps>(function Gallery(
-  { items, onOpen, ready },
+  { items, onOpen, ready, albumName },
   gridRef,
 ) {
   return (
     <div id="smooth-wrapper">
       <main id="smooth-content">
         <header className="frame">
-          <h1 className="frame__title">PeekSense</h1>
+          {albumName && (
+            <Link href="/" className="frame__back" aria-label="Back to albums">
+              ← Albums
+            </Link>
+          )}
+          <h1 className="frame__title">{albumName ?? 'PeekSense'}</h1>
         </header>
         <div
           className={`grid${ready ? ' grid--ready' : ''}`}

@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { UTApi } from 'uploadthing/server';
+import type { AlbumConfig } from '../../albums.config';
 
 export interface GridItem {
   id: string;
@@ -33,9 +34,7 @@ const listAllFiles = async (utapi: UTApi, cap: number): Promise<UploadThingFile[
   while (all.length < cap) {
     const { files, hasMore } = await utapi.listFiles({ limit: PAGE_SIZE, offset });
     all.push(...files);
-    if (!hasMore || files.length === 0) {
-      break;
-    }
+    if (!hasMore || files.length === 0) break;
     offset += files.length;
   }
 
@@ -43,10 +42,12 @@ const listAllFiles = async (utapi: UTApi, cap: number): Promise<UploadThingFile[
 };
 
 const fetchGallery = unstable_cache(
-  async (): Promise<GalleryConfig> => {
-    const token = process.env.UPLOADTHING_TOKEN;
+  async (albumId: string, tokenEnvKey: string): Promise<GalleryConfig> => {
+    const token = process.env[tokenEnvKey];
     if (!token) {
-      throw new Error('UPLOADTHING_TOKEN is not set. Add it to .env.local.');
+      throw new Error(
+        `${tokenEnvKey} is not set. Add it to .env.local (album: "${albumId}").`,
+      );
     }
 
     const utapi = new UTApi({ token });
@@ -71,4 +72,32 @@ const fetchGallery = unstable_cache(
   { revalidate: CACHE_SECONDS, tags: ['gallery'] },
 );
 
-export const getGallery = fetchGallery;
+export const getGallery = (album: AlbumConfig): Promise<GalleryConfig> =>
+  fetchGallery(album.id, album.tokenEnvKey);
+
+const PREVIEW_COUNT = 4;
+
+const fetchPreviews = unstable_cache(
+  async (albumId: string, tokenEnvKey: string): Promise<GridItem[]> => {
+    const token = process.env[tokenEnvKey];
+    if (!token) return [];
+
+    const utapi = new UTApi({ token });
+    const appId = getAppId(token);
+    const { files } = await utapi.listFiles({ limit: PREVIEW_COUNT });
+
+    return files
+      .filter((file) => file.status === 'Uploaded')
+      .slice(0, PREVIEW_COUNT)
+      .map((file) => ({
+        id: file.key,
+        image: `https://${appId}.ufs.sh/f/${file.key}`,
+        caption: cleanCaption(file.name),
+      }));
+  },
+  ['uploadthing-previews'],
+  { revalidate: CACHE_SECONDS, tags: ['gallery'] },
+);
+
+export const getAlbumPreviews = (album: AlbumConfig): Promise<GridItem[]> =>
+  fetchPreviews(album.id, album.tokenEnvKey);
